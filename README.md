@@ -22,22 +22,8 @@ git clone https://github.com/haddadv2/Avi_Acripts.git
 cd Avi_Acripts
 ```
 
-Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
 Navigate into any script folder and follow its README:
 ```bash
-cd av_vs_exporter
-python script_name.py
-```
-
-Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
 
 ---
 
