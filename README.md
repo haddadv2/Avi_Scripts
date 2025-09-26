@@ -9,9 +9,8 @@ Each script is organized in its own subfolder with a dedicated README.
 
 | Script Folder | Description | Link |
 |---------------|-------------|------|
-| **healthcheck** | Collects controller and SE health data and outputs a report | [README](healthcheck/README.md) |
-| **cert_manager** | Automates certificate upload and renewal | [README](cert_manager/README.md) |
-| **ipam_integration** | Example integration with IPAM/DNS APIs | [README](ipam_integration/README.md) |
+| **av_vs_exporter** | Export Avi Virtual Service configuration and details | [README](av_vs_exporter/README.md) |
+| **avi_get_cert** | Fetch and manage Avi certificates | [README](avi_get_cert/README.md) |
 
 ---
 
@@ -30,17 +29,17 @@ pip install -r requirements.txt
 
 Navigate into any script folder and follow its README:
 ```bash
-cd healthcheck
-python healthcheck.py
+cd av_vs_exporter
+python script_name.py
 ```
 
----
+Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-## 🤝 Contributions
-When adding a new script:
-1. Create a new subfolder  
-2. Add your script(s) and a `README.md`  
-3. Update this main README to include the new script.
+
+---
 
 ## 📜 License
 MIT License – see [LICENSE](LICENSE).
