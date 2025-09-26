@@ -9,7 +9,7 @@ Each script is organized in its own subfolder with a dedicated README.
 
 | Script Folder | Description | Link |
 |---------------|-------------|------|
-| **av_vs_exporter** | Export Avi Virtual Service configuration and details | [README](av_vs_exporter/README.md) |
+| **av_vs_exporter** | Export Avi Virtual Service configuration and details | [README](avi_vs_export/README.md) |
 | **avi_get_cert** | Fetch and manage Avi certificates | [README](avi_get_cert/README.md) |
 
 ---

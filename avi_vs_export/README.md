@@ -17,7 +17,7 @@ pip install -r requirements.txt
 
 ## Usage
 ```bash
-python avi_vs_exporter.py -u USERNAME -p PASSWORD -c CONTROLLER_IP -v CONTROLLER_VERSION [-n LIMIT] [-C CLOUD_NAME] [-o OUTPUT_FILE]
+python avi_vs_export.py -u USERNAME -p PASSWORD -c CONTROLLER_IP -v CONTROLLER_VERSION [-n LIMIT] [-C CLOUD_NAME] [-o OUTPUT_FILE]
 ```
 
 **Parameters:**
@@ -31,7 +31,7 @@ python avi_vs_exporter.py -u USERNAME -p PASSWORD -c CONTROLLER_IP -v CONTROLLER
 
 Example:
 ```bash
-python avi_vs_exporter.py -u admin -p MyPass123 -c 10.10.10.10 -v 22.1.3 -n 50 -C Default-Cloud
+python avi_vs_export.py -u admin -p MyPass123 -c 10.10.10.10 -v 22.1.3 -n 50 -C Default-Cloud
 ```
 
 ## Output
