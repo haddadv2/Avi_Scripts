@@ -1,7 +1,0 @@
-
-# .env
-export AVI_USERNAME="USERNAME"
-export AVI_PASSWORD="PASSWORD"
-export DRY_RUN=false
-
-
