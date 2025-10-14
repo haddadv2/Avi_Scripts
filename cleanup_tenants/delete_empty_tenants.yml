@@ -1,0 +1,26 @@
+---
+- name: Delete empty tenants from Avi Controllers
+  hosts: localhost
+  gather_facts: no
+
+  vars:
+    # Default to dry-run unless explicitly disabled
+    dry_run: true
+    log_file: "{{ playbook_dir }}/delete_empty_tenants.log"
+
+  tasks:
+    - name: Run Python cleanup script and save output
+      ansible.builtin.shell: >
+        python3 cleanup_empty_tenants.py
+        --csv controllers.csv
+        {% if not dry_run|bool %} {% else %} --dry-run {% endif %}
+        2>&1 | tee "{{ log_file }}"
+      args:
+        chdir: "{{ playbook_dir }}"
+      environment:
+        AVI_USERNAME: "{{ lookup('env','AVI_USERNAME') }}"
+        AVI_PASSWORD: "{{ lookup('env','AVI_PASSWORD') }}"
+
+    - name: Inform user where log is saved
+      ansible.builtin.debug:
+        msg: "Python script output is saved to {{ log_file }}"

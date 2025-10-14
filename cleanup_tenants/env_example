@@ -1,0 +1,7 @@
+
+# .env
+export AVI_USERNAME="admin"
+export AVI_PASSWORD="M!l@n0@vmware"
+export DRY_RUN=false
+
+
