@@ -1,0 +1,36 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments (folders) anywhere
+**/env/
+env/
+.venv/
+venv/
+ENV/
+venv.bak/
+env.bak/
+**/env
+
+# If env can be a file name too (no trailing slash)
+**/env
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Logs and temp
+*.log
+*.tmp
+*.swp
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+
+# Distribution
+build/
+dist/
+*.egg-info/
