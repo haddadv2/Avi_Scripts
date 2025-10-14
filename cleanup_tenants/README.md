@@ -41,7 +41,7 @@ cleanup_tenants/
 ### 1️⃣ Clone or copy the project
 
 ```bash
-git clone https://github.com/<your-repo>/cleanup_tenants.git
+git clone https://github.com/haddadv2/Avi_Scripts.git
 cd cleanup_tenants
 ```
 
