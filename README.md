@@ -11,6 +11,7 @@ Each script is organized in its own subfolder with a dedicated README.
 |---------------|-------------|------|
 | **avi_vs_export** | Export Avi Virtual Service configuration and details | [README](avi_vs_export/README.md) |
 | **avi_get_cert** | Fetch and manage Avi certificates | [README](avi_get_cert/README.md) |
+| **cleanup_tenants** | Cleanup unused Avi tenants | [README](cleanup_tenants/README.md) |
 
 ---
 
