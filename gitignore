@@ -1,29 +1,36 @@
-# Byte-compiled / optimized / DLL files
+# Python caches
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual environment
-venv/
+# Virtual environments (folders) anywhere
+**/env/
 env/
 .venv/
+venv/
+ENV/
+venv.bak/
+env.bak/
 **/env
 
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
+# If env can be a file name too (no trailing slash)
+**/env
 
-# Logs and temporary files
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Logs and temp
 *.log
 *.tmp
 *.swp
-.DS_Store
 
-# IDE / Editor folders
+# IDEs
 .vscode/
 .idea/
 *.iml
 
-# OS specific
-Thumbs.db
+# Distribution
+build/
+dist/
+*.egg-info/
