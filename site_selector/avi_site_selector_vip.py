@@ -19,6 +19,8 @@ Usage:
   python3 avi_site_selector_vip.py --target "SITE-1" --rename "OLD=NEW" --dry-run
   python3 avi_site_selector_vip.py --target all --rename "OLD=NEW" --no-add   # rename only
   python3 avi_site_selector_vip.py --target all --full-mesh --dry-run   # every cluster <-> every cluster
+  python3 avi_site_selector_vip.py --target "SITE-1" --delete SITE-NEW-1 --dry-run   # preview a delete
+  python3 avi_site_selector_vip.py --target "SITE-1" --delete SITE-NEW-1 [--yes]     # asks to confirm
   With --target all, you're prompted for a username/password PER cluster
   (or set AVI_USER_<NAME> / AVI_PASSWORD_<NAME>, e.g. AVI_USER_SITE_1).
 
@@ -99,6 +101,10 @@ class Avi:
                        json=body, timeout=30)
         return r.status_code, r.text
 
+    def delete_site(self, site):
+        r = self.s.delete(f"{self.base}/api/controllersite/{site['uuid']}", timeout=30)
+        return r.status_code, r.text
+
     def logout(self):
         try:
             self.s.post(f"{self.base}/logout", timeout=10)
@@ -120,6 +126,11 @@ def main():
                          "--rename 'OLD-NAME=NEW-NAME' (done before any adds)")
     ap.add_argument("--no-add", action="store_true",
                     help="skip adding sites (use with --rename for a rename-only run)")
+    ap.add_argument("--delete", nargs="+", metavar="NAME", default=[],
+                    help="delete existing site entries with these exact names from the "
+                         "target(s); a delete run does not add sites (preview with --dry-run)")
+    ap.add_argument("--yes", action="store_true",
+                    help="don't ask for confirmation before deleting")
     args = ap.parse_args()
 
     renames = []
@@ -213,6 +224,32 @@ def main():
         print(f"\n[{c['name']}] existing sites: "
               f"{[(s['name'], s['address']) for s in existing] or 'none'}")
 
+        to_delete = []
+        for name in args.delete:
+            entry = next((s for s in existing if s["name"] == name), None)
+            if not entry:
+                print(f"[{c['name']}] delete skipped: no entry named {name!r}")
+            elif args.dry_run:
+                print(f"[{c['name']}] WOULD DELETE {name} -> {entry['address']}")
+            else:
+                to_delete.append(entry)
+        if to_delete and not args.yes:
+            print(f"[{c['name']}] about to DELETE: "
+                  f"{[(s['name'], s['address']) for s in to_delete]}")
+            if input(f"[{c['name']}] type 'yes' to delete: ").strip().lower() != "yes":
+                print(f"[{c['name']}] delete cancelled")
+                to_delete = []
+        for entry in to_delete:
+            code, body = avi.delete_site(entry)
+            if code in (200, 204):
+                print(f"[{c['name']}] deleted {entry['name']} -> {entry['address']} (HTTP {code})")
+                names.discard(entry["name"])
+                addrs.discard(entry["address"])
+            else:
+                failures += 1
+                print(f"[{c['name']}] FAILED delete {entry['name']}: HTTP {code} {body}",
+                      file=sys.stderr)
+
         for old, new in renames:
             entry = next((s for s in existing if s["name"] == old), None)
             if not entry:
@@ -234,7 +271,7 @@ def main():
                 print(f"[{c['name']}] FAILED rename {old}: HTTP {code} {body}",
                       file=sys.stderr)
 
-        for other in ([] if args.no_add else (new_clusters or CLUSTERS)):
+        for other in ([] if (args.no_add or args.delete) else (new_clusters or CLUSTERS)):
             if other is c:
                 continue
             if other["name"] in names or other["vip"] in addrs:
