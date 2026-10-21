@@ -34,3 +34,6 @@ env.bak/
 build/
 dist/
 *.egg-info/
+
+# Real controller addresses (use clusters.example.json as a template)
+site_selector/clusters.json

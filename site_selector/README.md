@@ -20,35 +20,53 @@ pip install -r requirements.txt
 Python 3 with network access to each controller on port 443.
 
 ## Configuration
-Edit `AVI_VERSION` and the `CLUSTERS` list at the top of `avi_site_selector_vip.py`:
+Clusters and settings live in a JSON file, not in the script. Copy the example and edit it:
+```bash
+cp clusters.example.json clusters.json
+```
+By default the script reads `clusters.json` next to itself; use `--config FILE` for another file.
+`clusters.json` is listed in `.gitignore` so real controller addresses are not committed.
 
-```python
-AVI_VERSION = "30.2.3"   # must match the controller version
-
-CLUSTERS = [
-    {"name": "SITE-1", "login": "192.0.2.11", "vip": None},
-    {"name": "SITE-NEW-1", "login": "192.0.2.21", "new": True, "vip": "controller-new-1.example.com"},
-]
+```json
+{
+  "avi_version": "30.2.3",
+  "tenant": "admin",
+  "verify_tls": false,
+  "clusters": [
+    {"name": "SITE-1", "login": "192.0.2.11", "vip": null},
+    {"name": "SITE-NEW-1", "login": "192.0.2.21", "new": true, "vip": "controller-new-1.example.com"}
+  ]
+}
 ```
 
-| Field | Meaning |
-|-------|---------|
-| `name` | Site name shown in the other controllers' switchers |
-| `login` | IP used to reach the cluster's API. For 3-node clusters use the cluster VIP |
-| `vip` | `None` reads the Controller Cluster IP from `/api/cluster`. Set a value to use it as-is (needed for single-node clusters that have no cluster IP) |
-| `new` | `True` marks a site being **added**. Flagged sites are added only to the unflagged (existing) clusters, and are never logged into when `vip` is hardcoded |
+| Setting | Meaning |
+|---------|---------|
+| `avi_version` | API version sent to the controllers; must match the controller version (default `30.2.3`) |
+| `tenant` | Avi tenant (default `admin`) |
+| `verify_tls` | Verify controller TLS certificates (default `false`) |
+| `clusters` | List of clusters, described below |
 
-A wrong `AVI_VERSION` makes the API return `400 Invalid version`.
+| Cluster field | Meaning |
+|---------------|---------|
+| `name` | Site name shown in the other controllers' switchers (must be unique) |
+| `login` | IP used to reach the cluster's API. For 3-node clusters use the cluster VIP |
+| `vip` | `null` (or omitted) reads the Controller Cluster IP from `/api/cluster`. Set a value to use it as-is (needed for single-node clusters that have no cluster IP) |
+| `new` | `true` marks a site being **added**. Flagged sites are added only to the unflagged (existing) clusters, and are never logged into when `vip` is hardcoded |
+
+The script stops with a clear message if the file is missing, is not valid JSON, has no clusters,
+or a cluster lacks `name`/`login` or repeats a name. A wrong `avi_version` makes the API return
+`400 Invalid version`.
 
 ## Usage
 ```bash
 python3 avi_site_selector_vip.py [--target NAME [NAME ...]] [--dry-run]
-                                 [--rename OLD=NEW [...]] [--no-add] [--full-mesh]
+                                 [--config FILE] [--rename OLD=NEW [...]] [--no-add] [--full-mesh]
                                  [--delete NAME [...]] [--yes]
 ```
 
 | Option | Description |
 |--------|-------------|
+| `--config FILE` | JSON file with the cluster list and settings (default: `clusters.json` next to the script) |
 | `--target NAME [...]` | Clusters to modify. Case-insensitive; quote names containing spaces |
 | `--target all` | Every eligible cluster, with a separate login per cluster |
 | *(no `--target`)* | Shows a numbered menu |
@@ -70,6 +88,9 @@ With `new: True` clusters defined, only the unflagged clusters can be targets. W
 
 ### Examples
 ```bash
+# Use a different config file
+python3 avi_site_selector_vip.py --config other-env.json --target all --dry-run
+
 # Add the new sites to one existing cluster
 python3 avi_site_selector_vip.py --target SITE-1 --dry-run
 python3 avi_site_selector_vip.py --target SITE-1
