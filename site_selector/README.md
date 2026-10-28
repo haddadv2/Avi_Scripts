@@ -57,6 +57,13 @@ The script stops with a clear message if the file is missing, is not valid JSON,
 or a cluster lacks `name`/`login` or repeats a name. A wrong `avi_version` makes the API return
 `400 Invalid version`.
 
+## Embedded-config variant
+`avi_site_selector_embedded.py` is the same script with the cluster list and settings written
+inside the file (edit the `CONFIG` section at the top) instead of read from `clusters.json`.
+It has no `--config` option and needs no extra file. Everything else is identical, so the rest of
+this README applies to both. Use `avi_site_selector_vip.py` if you want to keep real controller
+addresses out of the script file.
+
 ## Usage
 ```bash
 python3 avi_site_selector_vip.py [--target NAME [NAME ...]] [--dry-run]
