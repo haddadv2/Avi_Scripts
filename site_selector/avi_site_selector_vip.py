@@ -5,13 +5,13 @@ one entry per cluster, using each cluster's Controller Cluster IP (VIP).
 
 Flow:
   1. Log in to each cluster and read its VIP from /api/cluster.
-     Stops if any cluster has no VIP (unless you set "vip" in the config file).
+     Stops if any cluster has no VIP (unless you set "vip" in CLUSTERS or the config file).
   2. On each cluster, POST /api/controllersite for every OTHER cluster,
      skipping entries that already exist (same name or same address).
   3. Shows the final site list on each cluster.
 
-Clusters and settings come from clusters.json (next to this script) or --config FILE;
-copy clusters.example.json to get started.
+Clusters and settings come from the CLUSTERS list embedded in this script (see CONFIG
+below), or from a JSON file if you pass --config FILE (see clusters.example.json).
 
 Usage:
   python3 avi_site_selector_vip.py --target SITE-1 --dry-run   # SITE-1 only, preview
@@ -21,7 +21,7 @@ Usage:
   (set AVI_USER / AVI_PASSWORD env vars, or you'll be prompted)
   python3 avi_site_selector_vip.py --target "SITE-1" --rename "OLD=NEW" --dry-run
   python3 avi_site_selector_vip.py --target all --rename "OLD=NEW" --no-add   # rename only
-  python3 avi_site_selector_vip.py --config other.json --target all --dry-run   # alternate config file
+  python3 avi_site_selector_vip.py --config clusters.json --target all --dry-run   # use a JSON file instead of the embedded list
   python3 avi_site_selector_vip.py --target all --full-mesh --dry-run   # every cluster <-> every cluster
   python3 avi_site_selector_vip.py --target "SITE-1" --delete SITE-NEW-1 --dry-run   # preview a delete
   python3 avi_site_selector_vip.py --target "SITE-1" --delete SITE-NEW-1 [--yes]     # asks to confirm
@@ -42,62 +42,71 @@ import requests
 import urllib3
 
 # ---------------------------------------------------------------------------
-# CONFIG
+# CONFIG - edit this section, or pass --config FILE to use a JSON file instead
 # ---------------------------------------------------------------------------
-# Cluster list and settings are read from a JSON file (see clusters.example.json):
-#   {
-#     "avi_version": "30.2.3",       # must match the controller version
-#     "tenant": "admin",
-#     "verify_tls": false,
-#     "clusters": [
-#       {"name": "SITE-1", "login": "192.0.2.11", "vip": null},
-#       {"name": "SITE-NEW-1", "login": "192.0.2.21", "new": true, "vip": "host.example.com"}
-#     ]
-#   }
-# "login" = any node IP used to reach the cluster's API.
-# "vip"   = optional manual override; null/omitted reads it from /api/cluster.
-# "new"   = true marks sites being ADDED. If any cluster is flagged, only the
+AVI_VERSION = "30.2.3"   # must match the controller version
+TENANT = "admin"
+VERIFY_TLS = False
+
+# "name"  = site name shown in the other controllers' switchers (must be unique).
+# "login" = any node IP used to reach the cluster's API (for 3-node clusters, the cluster VIP).
+# "vip"   = optional manual override; None reads it from /api/cluster.
+#           Set it for single-node clusters, which have no Controller Cluster IP.
+# "new"   = True marks sites being ADDED. If any cluster is flagged, only the
 #           flagged ones are added, and only to the unflagged (existing) clusters.
 #           A flagged cluster with a hardcoded "vip" is never logged into.
 #           Use --full-mesh to ignore the flags (all clusters <-> all clusters).
-DEFAULT_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clusters.json")
-AVI_VERSION = "30.2.3"
-TENANT = "admin"
-VERIFY_TLS = False
-CLUSTERS = []
+CLUSTERS = [
+    # Existing sites (these are the targets that get modified):
+    {"name": "SITE-1", "login": "192.0.2.11", "vip": None},
+    {"name": "SITE-2", "login": "192.0.2.12", "vip": None},
+    # New sites being added to the existing ones above:
+    {"name": "SITE-NEW-1", "login": "192.0.2.21", "new": True, "vip": "controller-new-1.example.com"},
+    {"name": "SITE-NEW-2", "login": "192.0.2.22", "new": True, "vip": "controller-new-2.example.com"},
+]
+# ---------------------------------------------------------------------------
+# A JSON file given with --config replaces the settings and CLUSTERS above. Format:
+#   {"avi_version": "30.2.3", "tenant": "admin", "verify_tls": false,
+#    "clusters": [{"name": "SITE-1", "login": "192.0.2.11", "vip": null}, ...]}
+# (see clusters.example.json). Only "clusters" is required.
 # ---------------------------------------------------------------------------
 
 
-def load_config(path):
-    """Load settings and the cluster list from a JSON file into the module globals."""
+def use_config(cfg, source):
+    """Validate a config dict and apply it to the module globals."""
     global AVI_VERSION, TENANT, VERIFY_TLS, CLUSTERS
-    try:
-        with open(path) as f:
-            cfg = json.load(f)
-    except FileNotFoundError:
-        sys.exit(f"Config file not found: {path}\n"
-                 "Copy clusters.example.json to clusters.json and edit it, or pass --config FILE.")
-    except (OSError, json.JSONDecodeError) as e:
-        sys.exit(f"Cannot read config file {path}: {e}")
-    if not isinstance(cfg, dict) or not isinstance(cfg.get("clusters"), list) or not cfg["clusters"]:
-        sys.exit(f"{path}: expected an object with a non-empty \"clusters\" list.")
+    clusters = cfg.get("clusters") if isinstance(cfg, dict) else None
+    if not isinstance(clusters, list) or not clusters:
+        sys.exit(f"{source}: expected a non-empty \"clusters\" list.")
 
     seen = set()
-    for i, c in enumerate(cfg["clusters"], 1):
+    for i, c in enumerate(clusters, 1):
         if (not isinstance(c, dict) or not isinstance(c.get("name"), str) or not c["name"].strip()
                 or not isinstance(c.get("login"), str) or not c["login"].strip()):
-            sys.exit(f"{path}: cluster #{i} needs a non-empty \"name\" and \"login\" (strings).")
+            sys.exit(f"{source}: cluster #{i} needs a non-empty \"name\" and \"login\" (strings).")
         if c["name"] in seen:
-            sys.exit(f"{path}: duplicate cluster name {c['name']!r}.")
+            sys.exit(f"{source}: duplicate cluster name {c['name']!r}.")
         if c.get("vip") is not None and not isinstance(c["vip"], str):
-            sys.exit(f"{path}: cluster {c['name']!r}: \"vip\" must be a string or null.")
+            sys.exit(f"{source}: cluster {c['name']!r}: \"vip\" must be a string or null.")
         seen.add(c["name"])
         c["vip"] = c.get("vip") or None
 
     AVI_VERSION = str(cfg.get("avi_version", AVI_VERSION))
     TENANT = str(cfg.get("tenant", TENANT))
     VERIFY_TLS = bool(cfg.get("verify_tls", VERIFY_TLS))
-    CLUSTERS = cfg["clusters"]
+    CLUSTERS = clusters
+
+
+def load_config(path):
+    """Read a JSON config file and apply it."""
+    try:
+        with open(path) as f:
+            cfg = json.load(f)
+    except FileNotFoundError:
+        sys.exit(f"Config file not found: {path}\nSee clusters.example.json for the format.")
+    except (OSError, json.JSONDecodeError) as e:
+        sys.exit(f"Cannot read config file {path}: {e}")
+    use_config(cfg, path)
 
 
 class Avi:
@@ -157,9 +166,9 @@ def main():
     ap.add_argument("--full-mesh", action="store_true",
                     help="ignore the 'new' flags: every cluster (old and new) is a "
                          "target and gets every other cluster added")
-    ap.add_argument("--config", default=DEFAULT_CONFIG, metavar="FILE",
-                    help="JSON file with the cluster list and settings "
-                         "(default: clusters.json next to this script)")
+    ap.add_argument("--config", metavar="FILE",
+                    help="JSON file with the cluster list and settings; if omitted, "
+                         "the CLUSTERS list embedded in this script is used")
     ap.add_argument("--dry-run", action="store_true",
                     help="show planned changes without making them")
     ap.add_argument("--rename", nargs="+", metavar="OLD=NEW", default=[],
@@ -173,7 +182,10 @@ def main():
     ap.add_argument("--yes", action="store_true",
                     help="don't ask for confirmation before deleting")
     args = ap.parse_args()
-    load_config(args.config)
+    if args.config:
+        load_config(args.config)
+    else:
+        use_config({"clusters": CLUSTERS}, "CLUSTERS (embedded in the script)")
 
     renames = []
     for item in args.rename:
@@ -250,7 +262,7 @@ def main():
                if not c["vip"] and (c["name"] in sessions or c in (new_clusters or CLUSTERS))]
     if missing:
         print(f"\nStopping: no Controller Cluster IP for {missing}. Configure one under "
-              "Administration > Controller > Nodes, or set 'vip' in the config file.",
+              "Administration > Controller > Nodes, or set 'vip' in CLUSTERS or the config file.",
               file=sys.stderr)
         sys.exit(1)
 

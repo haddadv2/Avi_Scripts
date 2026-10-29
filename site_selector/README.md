@@ -20,13 +20,28 @@ pip install -r requirements.txt
 Python 3 with network access to each controller on port 443.
 
 ## Configuration
-Clusters and settings live in a JSON file, not in the script. Copy the example and edit it:
-```bash
-cp clusters.example.json clusters.json
-```
-By default the script reads `clusters.json` next to itself; use `--config FILE` for another file.
-`clusters.json` is listed in `.gitignore` so real controller addresses are not committed.
+By default the script uses the `CLUSTERS` list embedded at the top of `avi_site_selector_vip.py`.
+Edit the `CONFIG` section there (the entries shown are placeholders):
 
+```python
+AVI_VERSION = "30.2.3"   # must match the controller version
+TENANT = "admin"
+VERIFY_TLS = False
+
+CLUSTERS = [
+    {"name": "SITE-1", "login": "192.0.2.11", "vip": None},
+    {"name": "SITE-NEW-1", "login": "192.0.2.21", "new": True, "vip": "controller-new-1.example.com"},
+]
+```
+
+To keep real controller addresses out of the script, put them in a JSON file and pass it with
+`--config FILE`. When `--config` is given it **replaces** the settings and `CLUSTERS` list in the
+script; when it is omitted the embedded ones are used. Start from `clusters.example.json`:
+
+```bash
+cp clusters.example.json my-clusters.json      # edit it, keep it out of git
+python3 avi_site_selector_vip.py --config my-clusters.json --target all --dry-run
+```
 ```json
 {
   "avi_version": "30.2.3",
@@ -38,6 +53,7 @@ By default the script reads `clusters.json` next to itself; use `--config FILE` 
   ]
 }
 ```
+Only `clusters` is required in the JSON file. `clusters.json` in this folder is listed in `.gitignore`.
 
 | Setting | Meaning |
 |---------|---------|
@@ -50,19 +66,13 @@ By default the script reads `clusters.json` next to itself; use `--config FILE` 
 |---------------|---------|
 | `name` | Site name shown in the other controllers' switchers (must be unique) |
 | `login` | IP used to reach the cluster's API. For 3-node clusters use the cluster VIP |
-| `vip` | `null` (or omitted) reads the Controller Cluster IP from `/api/cluster`. Set a value to use it as-is (needed for single-node clusters that have no cluster IP) |
-| `new` | `true` marks a site being **added**. Flagged sites are added only to the unflagged (existing) clusters, and are never logged into when `vip` is hardcoded |
+| `vip` | `None` / `null` (or omitted) reads the Controller Cluster IP from `/api/cluster`. Set a value to use it as-is (needed for single-node clusters that have no cluster IP) |
+| `new` | `True` marks a site being **added**. Flagged sites are added only to the unflagged (existing) clusters, and are never logged into when `vip` is hardcoded |
 
-The script stops with a clear message if the file is missing, is not valid JSON, has no clusters,
-or a cluster lacks `name`/`login` or repeats a name. A wrong `avi_version` makes the API return
+The embedded list and the JSON file are checked the same way. The script stops with a clear
+message if the file is missing, is not valid JSON, has no clusters, a cluster lacks
+`name`/`login`, or a name is repeated. A wrong `avi_version` makes the API return
 `400 Invalid version`.
-
-## Embedded-config variant
-`avi_site_selector_embedded.py` is the same script with the cluster list and settings written
-inside the file (edit the `CONFIG` section at the top) instead of read from `clusters.json`.
-It has no `--config` option and needs no extra file. Everything else is identical, so the rest of
-this README applies to both. Use `avi_site_selector_vip.py` if you want to keep real controller
-addresses out of the script file.
 
 ## Usage
 ```bash
@@ -73,7 +83,7 @@ python3 avi_site_selector_vip.py [--target NAME [NAME ...]] [--dry-run]
 
 | Option | Description |
 |--------|-------------|
-| `--config FILE` | JSON file with the cluster list and settings (default: `clusters.json` next to the script) |
+| `--config FILE` | JSON file with the cluster list and settings. If omitted, the `CLUSTERS` list embedded in the script is used |
 | `--target NAME [...]` | Clusters to modify. Case-insensitive; quote names containing spaces |
 | `--target all` | Every eligible cluster, with a separate login per cluster |
 | *(no `--target`)* | Shows a numbered menu |
